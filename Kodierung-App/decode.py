@@ -1,5 +1,6 @@
 import os
 import json
+import re
 
 def hex_str(dec):
     return f"{int(dec):02X}"
@@ -11,6 +12,8 @@ def normalize_hex(byte):
         return (s if s else "0") + "H"
     return byte
 
+def normalize_label(label):
+    return re.sub(r'\s+', '', label).lower()
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
 mapping_path = os.path.join(script_dir, "mapping.json")
@@ -71,7 +74,8 @@ def decode_sils(bitleiste):
                 for h in hex_arr:
                     h_norm = normalize_hex(h.upper())
                     if value_norm == h_norm:
-                        decoded[name] = param
+                        param_anzeigen = [k for k in param_map.keys() if normalize_label(k) == normalize_label(param)]
+                        decoded[name] = param_anzeigen[0] if param_anzeigen else param
                         found = True
                         break
                 if found:
