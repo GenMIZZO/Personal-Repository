@@ -279,23 +279,39 @@ class EncodeDecodeGUI(tk.Tk):
     def show_telegramme_for_element(self, event=None):
         self.clear_encode_gui()
         element = self.element_var.get()
-        
+
         if element == "SILS":
+            self.full_sils_check.config(state="normal")
+            self.ls_prefix_check.config(state="normal")
+            self.sils_name_entry.config(state="normal" if self.full_sils_var.get() else "disabled")
+
             self.typ_var.set("Meldung")
             for widget in [self.typ_dropdown, self.header_dropdown, self.only_param_check, self.io_prefix_check]:
                 widget.config(state="disabled")
             self.create_sils_ui()
             return
+
+        # NICHT SILS: Felder zurücksetzen und deaktivieren
+        self.full_sils_check.config(state="disabled")
+        self.full_sils_var.set(False)
+        self.ls_prefix_check.config(state="disabled")
+        self.ls_prefix_var.set(False)
+        self.sils_name_entry.delete(0, tk.END)
+        self.sils_name_entry.config(state="disabled")
+
         for widget in [self.typ_dropdown, self.header_dropdown, self.only_param_check, self.io_prefix_check]:
             widget.config(state="normal")
+
         typ = self.typ_var.get()
         header_keys = list(alle_elemente[element]["header"].keys())
         self.header_dropdown["values"] = header_keys
         self.header_var.set(header_keys[0])
+
         if element == "PEA" and typ == "Meldung":
             self.show_pea_modus(pea_y=154)
         else:
             self.hide_pea_modus()
+
         tgrams = alle_elemente[element].get(typ, {}).get("telegramme", {})
         curr_y = 185
         label_font = ("Arial", 10, "underline")
