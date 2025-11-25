@@ -164,22 +164,16 @@ def encode_main(element, typ, pea_modus, param_inputdict, only_param=False, head
     except Exception as e:
         raise
 
-def encode_sils_full(param_inputdict, name_4char):
-    """
-    Baut das vollständige SILS-Bittelegramm ($LS: ...) mit Sender, Name, Empfänger, Nutzdaten und DB-Teil.
-    param_inputdict: dict - wie bei encode_sils()
-    name_4char: str - 3 oder 4 Zeichen (z.B. "N903", "GH1")
-    Rückgabe: Liste von Bytes als Strings ["$LS:", ...]
-    """
-
-    # --- 1. Prefix ---
+def encode_sils_full(param_inputdict, name_4char, is_stoerung=False, stoerung_art="05"):
     result = []
 
-    # --- 2. Sender ---
+    # Sender
     sender_bytes = alle_elemente["SILS"]["Meldung"]["header"]["Sender"][0].split()
+    if is_stoerung and stoerung_art:
+        sender_bytes[3] = f"{stoerung_art}H"
     result.extend(sender_bytes)
 
-    # --- 3. Name (4x ASCII-Hex) ---
+    # Name (4 Zeichen als ASCII-Hex)
     name = name_4char.strip()
     if len(name) < 4:
         name = name.ljust(4, "_")
@@ -188,16 +182,27 @@ def encode_sils_full(param_inputdict, name_4char):
     name_bytes = [f"{ord(c):02X}H" for c in name]
     result.extend(name_bytes)
 
-    # --- 4. Empfänger ---
+    # Empfänger
     empfaenger_bytes = alle_elemente["SILS"]["Meldung"]["header"]["Empfänger"][0].split()
     result.extend(empfaenger_bytes)
 
-    # --- 5. Nutzdaten (die normalen encode_sils-Bytes) ---
-    nutzdaten = encode_sils(param_inputdict)
-    result.extend(nutzdaten)
+    # Nutzdaten korrekt erzeugen!
+    if is_stoerung:
+        nutzdaten_fields = [
+            f for f in alle_elemente["SILS"]["byteorder"]
+            if f not in ["Abwertungsinformation", "Fahrweginformation", "Signalbild dunkel"]
+        ]
+    else:
+        nutzdaten_fields = alle_elemente["SILS"]["byteorder"]
 
-    # --- 6. DB-Teil ---
-    db_bytes = alle_elemente["SILS"]["Meldung"]["header"]["DB"][0].split()
-    result.extend(db_bytes)
+    # --- KORREKT NUTZDATEN-BYTES HINZUFÜGEN ---
+    nutze_input = {f: param_inputdict.get(f, "Aus") for f in nutzdaten_fields}
+    nutzdaten_bytes = encode_sils(nutze_input)
+    result.extend(nutzdaten_bytes)
+
+    # DB-Teil nur bei NICHT-Störung
+    if not is_stoerung:
+        db_bytes = alle_elemente["SILS"]["Meldung"]["header"]["DB"][0].split()
+        result.extend(db_bytes)
 
     return result

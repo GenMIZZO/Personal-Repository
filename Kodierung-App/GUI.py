@@ -30,7 +30,7 @@ from encode import encode_main
 from decode import decode_main
 
 class ToolTip:
-    def __init__(self, widget, text, delay=500):
+    def __init__(self, widget, text, delay=520):
         self.widget = widget
         self.text = text
         self.delay = delay
@@ -154,6 +154,23 @@ class EncodeDecodeGUI(tk.Tk):
         self.sils_name_entry = ttk.Entry(self.encode_tab, width=8)
         self.sils_name_entry.place(x=450, y=70)
         self.sils_name_entry.config(state="disabled")
+        self.stoerung_var = tk.BooleanVar(value=False)
+        self.stoerung_check = ttk.Checkbutton(
+            self.encode_tab,
+            text="Störungtelegramm",
+            variable=self.stoerung_var,
+            command=self.toggle_stoerung_options,
+            state="disabled"  # Von Anfang an disabled!
+        )
+        self.stoerung_check.place(x=340, y=95)
+        self.stoerung_dropdown = ttk.Combobox(
+            self.encode_tab,
+            state="disabled",   # Von Anfang an disabled!
+            width=12,
+            values=["Störung", "Entstörung"]
+        )
+        self.stoerung_dropdown.place(x=470, y=95)
+        self.stoerung_dropdown.set("Störung")
         ToolTip(self.only_param_check, 'Gibt nur den Parameterteil aus, kein Header')
 
         self.encode_result_label = ttk.Label(self.encode_tab, text="Kodierungsergebnis")
@@ -169,13 +186,24 @@ class EncodeDecodeGUI(tk.Tk):
         self.paramlines = {}
         self.sils_widgets = []
         self.show_telegramme_for_element()
-
     def toggle_full_sils_entry(self):
         if self.full_sils_var.get():
             self.sils_name_entry.config(state="normal")
+            self.stoerung_check.config(state="normal")
+            self.toggle_stoerung_options()
         else:
             self.sils_name_entry.delete(0, tk.END)
-            self.sils_name_entry.config(state="disabled")   
+            self.sils_name_entry.config(state="disabled")
+            self.stoerung_var.set(False)
+            self.stoerung_check.config(state="disabled")
+            self.stoerung_dropdown.config(state="disabled") 
+
+    def toggle_stoerung_options(self):
+        if self.stoerung_var.get():
+            self.stoerung_dropdown.config(state="readonly")
+        else:
+            self.stoerung_dropdown.config(state="disabled")
+            self.stoerung_dropdown.set("Störung")
 
     def hide_pea_modus(self):
         self.label_pea_modus.place_forget()
@@ -282,6 +310,13 @@ class EncodeDecodeGUI(tk.Tk):
 
         if element == "SILS":
             self.full_sils_check.config(state="normal")
+
+            self.stoerung_check.config(state="normal")
+            if self.stoerung_var.get():
+                self.stoerung_dropdown.config(state="readonly")
+            else:
+                self.stoerung_dropdown.config(state="disabled")
+
             self.ls_prefix_check.config(state="normal")
             self.sils_name_entry.config(state="normal" if self.full_sils_var.get() else "disabled")
 
@@ -291,13 +326,20 @@ class EncodeDecodeGUI(tk.Tk):
             self.create_sils_ui()
             return
 
-        # NICHT SILS: Felder zurücksetzen und deaktivieren
+        # ----------- ALLE ANDEREN ELEMENTE --------------------- #
         self.full_sils_check.config(state="disabled")
         self.full_sils_var.set(False)
         self.ls_prefix_check.config(state="disabled")
         self.ls_prefix_var.set(False)
         self.sils_name_entry.delete(0, tk.END)
         self.sils_name_entry.config(state="disabled")
+
+            # *** STÖRUNGSTELEGRAMM IMMER DEAKTIVIEREN ***
+        self.stoerung_var.set(False)
+        self.stoerung_check.config(state="disabled")
+        self.stoerung_dropdown.config(state="disabled")
+        self.stoerung_dropdown.set("Störung")
+        # ------------------------------------------------------ #
 
         for widget in [self.typ_dropdown, self.header_dropdown, self.only_param_check, self.io_prefix_check]:
             widget.config(state="normal")
@@ -388,12 +430,16 @@ class EncodeDecodeGUI(tk.Tk):
                         num = int(str(param_inputdict[field]).split()[-1])
                         if not (1 <= num <= 253):
                             raise ValueError(f"Ungültige Fahrweg-Nummer: {num}")
-                         # ==== NEU: Bei Gesamttelegramm-Checkbox encode_sils_full nutzen ====
                 if self.full_sils_var.get():
                     # Name holen
                     name_input = self.sils_name_entry.get().strip()
+                    is_stoerung = False
+                    stoerung_art = None
+                    if self.stoerung_var.get():
+                        is_stoerung = True
+                        stoerung_art = "05" if self.stoerung_dropdown.get() == "Störung" else "06"
                     from encode import encode_sils_full  
-                    bitleiste = encode_sils_full(param_inputdict, name_input)
+                    bitleiste = encode_sils_full(param_inputdict, name_input, is_stoerung=is_stoerung, stoerung_art=stoerung_art)
                 else:
                     bitleiste = encode_main(element, typ, pea_modus, param_inputdict)
             else:
