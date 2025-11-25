@@ -135,7 +135,11 @@ class EncodeDecodeGUI(tk.Tk):
         self.only_param_var = tk.BooleanVar(value=False)
         self.only_param_check = ttk.Checkbutton(self.encode_tab, text='Nur Parameter (ohne Header)', variable=self.only_param_var)
         self.only_param_check.place(x=350, y=10)
-        # === Schritt 1: Neue Variablen für Checkbox und Eingabefeld ===
+
+        self.ls_prefix_var = tk.BooleanVar(value=False)
+        self.ls_prefix_check = ttk.Checkbutton(self.encode_tab, text='$LS:', variable=self.ls_prefix_var)
+        self.ls_prefix_check.place(x=300, y=95)  # x-Position ggf. anpassen!
+        ToolTip(self.ls_prefix_check, 'Setzt $LS: vor das Ergebnis')
 
         self.full_sils_var = tk.BooleanVar(value=False)
         self.full_sils_check = ttk.Checkbutton(
@@ -144,7 +148,7 @@ class EncodeDecodeGUI(tk.Tk):
             variable=self.full_sils_var,
             command=self.toggle_full_sils_entry
         )
-        self.full_sils_check.place(x=300, y=40)  # Y/x kannst du verschieben nach Wunsch
+        self.full_sils_check.place(x=300, y=40) 
 
         ttk.Label(self.encode_tab, text="Leuchtmittel Z.B.(N91)").place(x=318, y=70)
         self.sils_name_entry = ttk.Entry(self.encode_tab, width=8)
@@ -275,6 +279,7 @@ class EncodeDecodeGUI(tk.Tk):
     def show_telegramme_for_element(self, event=None):
         self.clear_encode_gui()
         element = self.element_var.get()
+        
         if element == "SILS":
             self.typ_var.set("Meldung")
             for widget in [self.typ_dropdown, self.header_dropdown, self.only_param_check, self.io_prefix_check]:
@@ -371,7 +376,7 @@ class EncodeDecodeGUI(tk.Tk):
                 if self.full_sils_var.get():
                     # Name holen
                     name_input = self.sils_name_entry.get().strip()
-                    from encode import encode_sils_full  # Am Anfang der Datei importieren oder hier
+                    from encode import encode_sils_full  
                     bitleiste = encode_sils_full(param_inputdict, name_input)
                 else:
                     bitleiste = encode_main(element, typ, pea_modus, param_inputdict)
@@ -395,6 +400,8 @@ class EncodeDecodeGUI(tk.Tk):
             text_result = " ".join(bitleiste)
             if self.io_prefix_var.get() and element != "SILS":
                 text_result = "$IO: " + text_result
+            if self.ls_prefix_var.get():
+                text_result = "$LS: " + text_result
             self.encode_result.delete(1.0, tk.END)
             self.encode_result.insert(tk.END, text_result)
         except Exception as e:

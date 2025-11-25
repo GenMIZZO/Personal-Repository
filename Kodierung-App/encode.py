@@ -173,7 +173,7 @@ def encode_sils_full(param_inputdict, name_4char):
     """
 
     # --- 1. Prefix ---
-    result = ["$LS:"]
+    result = []
 
     # --- 2. Sender ---
     sender_bytes = alle_elemente["SILS"]["Meldung"]["header"]["Sender"][0].split()
