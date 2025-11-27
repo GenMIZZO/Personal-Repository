@@ -164,14 +164,22 @@ def encode_main(element, typ, pea_modus, param_inputdict, only_param=False, head
     except Exception as e:
         raise
 
-def encode_sils_full(param_inputdict, name_4char, is_stoerung=False, stoerung_art="05"):
+def encode_sils_full(param_inputdict, name_4char, is_stoerung=False, stoerung_art="05", sender_byte=None):
     result = []
 
     # Sender
-    sender_bytes = alle_elemente["SILS"]["Meldung"]["header"]["Sender"][0].split()
-    if is_stoerung and stoerung_art:
-        sender_bytes[3] = f"{stoerung_art}H"
-    result.extend(sender_bytes)
+    if sender_byte is not None:
+        # Ersetze das erste Byte durch die Auswahl (z.B. "01")
+        sender_bytes = alle_elemente["SILS"]["Meldung"]["header"]["Sender"][0].split()
+        sender_bytes[0] = f"{sender_byte}H"
+        if is_stoerung and stoerung_art:
+            sender_bytes[3] = f"{stoerung_art}H"
+        result.extend(sender_bytes)
+    else:
+        sender_bytes = alle_elemente["SILS"]["Meldung"]["header"]["Sender"][0].split()
+        if is_stoerung and stoerung_art:
+            sender_bytes[3] = f"{stoerung_art}H"
+        result.extend(sender_bytes)
 
     # Name (4 Zeichen als ASCII-Hex)
     name = name_4char.strip()

@@ -62,8 +62,8 @@ class ToolTip:
 class EncodeDecodeGUI(tk.Tk):
     def __init__(self):
         super().__init__()
-        self.title("Bit-Encode/Decode GUI")
-        self.geometry("570x600")
+        self.title("Encode/Decode")
+        self.geometry("650x600")
         self.resizable(False, False)
         self.sils_entries = {}
         self.telegrammwidgets = []
@@ -130,16 +130,25 @@ class EncodeDecodeGUI(tk.Tk):
 
         self.io_prefix_var = tk.BooleanVar(value=False)
         self.io_prefix_check = ttk.Checkbutton(self.encode_tab, text='$IO:', variable=self.io_prefix_var)
-        self.io_prefix_check.place(x=300, y=10)
+        self.io_prefix_check.place(x=320, y=10)
         ToolTip(self.io_prefix_check, 'Setzt $IO: vor das Ergebnis')
         self.only_param_var = tk.BooleanVar(value=False)
         self.only_param_check = ttk.Checkbutton(self.encode_tab, text='Nur Parameter (ohne Header)', variable=self.only_param_var)
-        self.only_param_check.place(x=350, y=10)
+        self.only_param_check.place(x=370, y=10)
 
         self.ls_prefix_var = tk.BooleanVar(value=False)
         self.ls_prefix_check = ttk.Checkbutton(self.encode_tab, text='$LS:', variable=self.ls_prefix_var)
-        self.ls_prefix_check.place(x=300, y=95)  # x-Position ggf. anpassen!
+        self.ls_prefix_check.place(x=320, y=60)  
         ToolTip(self.ls_prefix_check, 'Setzt $LS: vor das Ergebnis')
+
+        # --- DROPDOWN FÜR $LS:-Sender-Byte ---
+        ttk.Label(self.encode_tab, text="R.Nr.").place(x=365, y=61)
+        self.ls_sender_var = tk.StringVar(value="01H")
+        self.ls_sender_dropdown = ttk.Combobox(
+            self.encode_tab, textvariable=self.ls_sender_var, values=["01H", "02H", "03H"], state="disabled", width=4
+ )
+        self.ls_sender_dropdown.place(x=395, y=60)  
+        ToolTip(self.ls_sender_dropdown, "Sender-Byte für Gesamt-SILS-Telegramm (01H/02H/03H)")
 
         self.full_sils_var = tk.BooleanVar(value=False)
         self.full_sils_check = ttk.Checkbutton(
@@ -148,11 +157,11 @@ class EncodeDecodeGUI(tk.Tk):
             variable=self.full_sils_var,
             command=self.toggle_full_sils_entry
         )
-        self.full_sils_check.place(x=300, y=40) 
+        self.full_sils_check.place(x=320, y=35) 
 
-        ttk.Label(self.encode_tab, text="Leuchtmittel Z.B.(N91)").place(x=318, y=70)
-        self.sils_name_entry = ttk.Entry(self.encode_tab, width=8)
-        self.sils_name_entry.place(x=450, y=70)
+        ttk.Label(self.encode_tab, text="Leuchtmittel Z.B.(N91)").place(x=490, y=60)
+        self.sils_name_entry = ttk.Entry(self.encode_tab, width=6)
+        self.sils_name_entry.place(x=450, y=60)
         self.sils_name_entry.config(state="disabled")
         self.stoerung_var = tk.BooleanVar(value=False)
         self.stoerung_check = ttk.Checkbutton(
@@ -162,21 +171,21 @@ class EncodeDecodeGUI(tk.Tk):
             command=self.toggle_stoerung_options,
             state="disabled"  # Von Anfang an disabled!
         )
-        self.stoerung_check.place(x=340, y=95)
+        self.stoerung_check.place(x=320, y=85)
         self.stoerung_dropdown = ttk.Combobox(
             self.encode_tab,
             state="disabled",   # Von Anfang an disabled!
             width=12,
             values=["Störung", "Entstörung"]
         )
-        self.stoerung_dropdown.place(x=470, y=95)
+        self.stoerung_dropdown.place(x=450, y=85)
         self.stoerung_dropdown.set("Störung")
         ToolTip(self.only_param_check, 'Gibt nur den Parameterteil aus, kein Header')
 
         self.encode_result_label = ttk.Label(self.encode_tab, text="Kodierungsergebnis")
         self.encode_result_label.place(x=250, y=430)
         self.encode_result = tk.Text(self.encode_tab, height=3)
-        self.encode_result.place(x=120, y=450, width=400, height=90)
+        self.encode_result.place(x=120, y=450, width=480, height=100)
         self.copy_result_button = ttk.Button(self.encode_tab, text="Ergebnis kopieren", command=self.copy_encode_result)
         self.copy_result_button.place(x=10, y=493)
         self.encode_button = ttk.Button(self.encode_tab, text="Encode", command=self.kodieren)
@@ -186,6 +195,8 @@ class EncodeDecodeGUI(tk.Tk):
         self.paramlines = {}
         self.sils_widgets = []
         self.show_telegramme_for_element()
+        self.update_ls_ui()
+
     def toggle_full_sils_entry(self):
         if self.full_sils_var.get():
             self.sils_name_entry.config(state="normal")
@@ -197,6 +208,16 @@ class EncodeDecodeGUI(tk.Tk):
             self.stoerung_var.set(False)
             self.stoerung_check.config(state="disabled")
             self.stoerung_dropdown.config(state="disabled") 
+        self.update_ls_ui() 
+
+    def update_ls_ui(self):
+        if self.full_sils_var.get():
+            self.ls_prefix_check.config(state="normal")
+            self.ls_sender_dropdown.config(state="readonly")
+        else:
+            self.ls_prefix_var.set(False)
+            self.ls_prefix_check.config(state="disabled")
+            self.ls_sender_dropdown.config(state="disabled")
 
     def toggle_stoerung_options(self):
         if self.stoerung_var.get():
@@ -318,6 +339,7 @@ class EncodeDecodeGUI(tk.Tk):
                 self.stoerung_dropdown.config(state="disabled")
 
             self.ls_prefix_check.config(state="normal")
+            self.ls_sender_dropdown.config(state="readonly")
             self.sils_name_entry.config(state="normal" if self.full_sils_var.get() else "disabled")
 
             self.typ_var.set("Meldung")
@@ -330,6 +352,7 @@ class EncodeDecodeGUI(tk.Tk):
         self.full_sils_check.config(state="disabled")
         self.full_sils_var.set(False)
         self.ls_prefix_check.config(state="disabled")
+        self.ls_sender_dropdown.config(state="disabled")
         self.ls_prefix_var.set(False)
         self.sils_name_entry.delete(0, tk.END)
         self.sils_name_entry.config(state="disabled")
@@ -431,15 +454,22 @@ class EncodeDecodeGUI(tk.Tk):
                         if not (1 <= num <= 253):
                             raise ValueError(f"Ungültige Fahrweg-Nummer: {num}")
                 if self.full_sils_var.get():
-                    # Name holen
+                    # Name holen und andere Parameter vorbereiten
                     name_input = self.sils_name_entry.get().strip()
                     is_stoerung = False
                     stoerung_art = None
                     if self.stoerung_var.get():
                         is_stoerung = True
                         stoerung_art = "05" if self.stoerung_dropdown.get() == "Störung" else "06"
-                    from encode import encode_sils_full  
-                    bitleiste = encode_sils_full(param_inputdict, name_input, is_stoerung=is_stoerung, stoerung_art=stoerung_art)
+                    ls_sender_byte = self.ls_sender_var.get()[:2] # z.B. "01"
+                    from encode import encode_sils_full
+                    bitleiste = encode_sils_full(
+                        param_inputdict,
+                        name_input,
+                        is_stoerung=is_stoerung,
+                        stoerung_art=stoerung_art,
+                        sender_byte=ls_sender_byte  # schick das zur Funktion
+                    )
                 else:
                     bitleiste = encode_main(element, typ, pea_modus, param_inputdict)
             else:
@@ -510,12 +540,12 @@ class EncodeDecodeGUI(tk.Tk):
         )
         self.decode_element_dropdown.place(x=400, y=18)
         self.input_text = tk.Text(self.decode_tab, width=110, height=3)
-        self.input_text.place(x=10, y=45, width=input_width, height=56)
+        self.input_text.place(x=10, y=45, width=600, height=56)
         self.decode_button = ttk.Button(self.decode_tab, text="Dekodieren", command=self.do_decode)
         self.decode_button.place(x=10, y=110)
         ttk.Label(self.decode_tab, text="Dekodierungsergebnis:").place(x=10, y=150)
         self.result_text = tk.Text(self.decode_tab, width=90, height=5)
-        self.result_text.place(x=10, y=175, width=500, height=165)
+        self.result_text.place(x=10, y=175, width=600, height=165)
         self.copy_decode_result_button = ttk.Button(self.decode_tab, text="Ergebnis kopieren", command=self.copy_decode_result)
         self.copy_decode_result_button.place(x=10, y=345)
         self.update_decode_mode_widgets()
