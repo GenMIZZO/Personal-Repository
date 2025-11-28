@@ -34,6 +34,9 @@ mapping_path = os.path.join(script_dir, "mapping.json")
 with open(mapping_path, "r", encoding="utf-8") as f:
     alle_elemente = json.load(f)
 
+def normalize_for_match(s):
+    return re.sub(r"\s*([+])\s*", "+", s.strip().lower()).replace(" ", "")
+    
 def encode_sils(param_inputdict):
     sils_map = alle_elemente["SILS"]["Meldung"]["telegramme"]
     byteorder = alle_elemente["SILS"]["byteorder"]
@@ -83,18 +86,24 @@ def encode_sils(param_inputdict):
                             hex_val = "FFH"
                     else:
                         hex_val = "FFH"
-            
+            elif field in ["ZS3", "ZS3V"]:
+                # Direkte Umrechnung: 10 Km/h → 01H, 20 → 02H, ... 150 → 0FH
+                if user_input.lower() == "aus" or not user_input.isdigit():
+                    hex_val = "FFH"
+                else:
+                    val10 = int(user_input)
+                    if 10 <= val10 <= 150 and val10 % 10 == 0:
+                        hex_val = f"{val10 // 10:02X}H"
+                    else:
+                        hex_val = "FFH"
             # Normales Mapping für andere Felder
             else:
                 field_vals = sils_map.get(field, {})
-                
-                # Case-Insensitive Suche mit Leerzeichen-Toleranz
                 matched_key = next(
                     (key for key in field_vals 
-                     if re.fullmatch(r'\s*'.join(key.split()), user_input, re.IGNORECASE)),
+                    if normalize_for_match(key) == normalize_for_match(user_input)), 
                     None
                 )
-                
                 if matched_key:
                     hex_val = field_vals[matched_key][0]
                 else:

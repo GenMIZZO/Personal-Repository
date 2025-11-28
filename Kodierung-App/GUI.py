@@ -274,31 +274,59 @@ class EncodeDecodeGUI(tk.Tk):
         for idx, field in enumerate(sils_fields):
             frame = ttk.Frame(scrollable_frame)
             frame.grid(row=idx, column=0, sticky="w", pady=5, padx=10)
-            lbl = ttk.Label(frame, text=f"{field}:", width=20, anchor="w")
-            lbl.pack(side="left")
-            cb = ttk.Combobox(frame, state="readonly", width=20)
-            if field in ["ZS2", "ZS2V"]:
+            if field in ["ZS3", "ZS3V"]:
+                lbl = ttk.Label(frame, text=f"{field}:", width=10, anchor="w")
+                lbl.pack(side="left")
+                lbl_geschw = ttk.Label(frame, text="Geschwindigkeit")
+                lbl_geschw.pack(side="left", padx=(8,0))
+                entry = ttk.Entry(frame, width=5)
+                entry.pack(side="left", padx=(8,0))
+                entry.config(validate="key",
+                            validatecommand=(self.encode_tab.register(self.validate_zs3_input), "%P"))
+                lbl_kmh = ttk.Label(frame, text="Km/h")
+                lbl_kmh.pack(side="left", padx=(8,0))
+                cb = None
+            elif field in ["ZS2", "ZS2V"]:
+                lbl = ttk.Label(frame, text=f"{field}:", width=20, anchor="w")
+                lbl.pack(side="left")
+                cb = ttk.Combobox(frame, state="readonly", width=20)
                 cb["values"] = ["Aus", "Kennbuchstabe"]
+                cb.set("Aus")
+                cb.pack(side="left", padx=10)
                 entry = ttk.Entry(frame, width=5)
-                entry.configure(validatecommand=(entry.register(self.validate_char_input), "%P"))
-            elif field == "Fahrweginformation":
-                cb["values"] = ["Keine Information", "Aus", "Fahrweginformation"]
-                entry = ttk.Entry(frame, width=5)
-                entry.configure(validatecommand=(entry.register(self.validate_num_input), "%P"))
-            else:
-                cb["values"] = list(alle_elemente["SILS"]["Meldung"]["telegramme"][field].keys())
-                entry = None
-            cb.set("Aus" if field in ["ZS2", "ZS2V"] else "Keine Information" if field == "Fahrweginformation" else list(cb["values"])[0])
-            cb.pack(side="left", padx=10)
-            if entry:
                 entry.pack(side="left")
+                entry.configure(validatecommand=(entry.register(self.validate_char_input), "%P"))
                 entry.config(state="disabled")
                 cb.bind("<<ComboboxSelected>>", lambda e, entry=entry: self.toggle_sils_entry(entry, e.widget.get()))
+            elif field == "Fahrweginformation":
+                lbl = ttk.Label(frame, text=f"{field}:", width=20, anchor="w")
+                lbl.pack(side="left")
+                cb = ttk.Combobox(frame, state="readonly", width=20)
+                cb["values"] = ["Keine Information", "Aus", "Fahrweginformation"]
+                cb.set("Keine Information")
+                cb.pack(side="left", padx=10)
+                entry = ttk.Entry(frame, width=5)
+                entry.pack(side="left")
+                entry.configure(validatecommand=(entry.register(self.validate_num_input), "%P"))
+                entry.config(state="disabled")
+                cb.bind("<<ComboboxSelected>>", lambda e, entry=entry: self.toggle_sils_entry(entry, e.widget.get()))
+            else:
+                lbl = ttk.Label(frame, text=f"{field}:", width=20, anchor="w")
+                lbl.pack(side="left")
+                cb = ttk.Combobox(frame, state="readonly", width=20)
+                cb["values"] = list(alle_elemente["SILS"]["Meldung"]["telegramme"][field].keys())
+                cb.set(list(cb["values"])[0])
+                cb.pack(side="left", padx=10)
+                entry = None
             self.sils_entries[field] = {"combobox": cb, "entry": entry}
         self.sils_widgets.append(container)
 
     def validate_char_input(self, new_val):
         return len(new_val) <= 1 and (new_val.isalpha() or new_val == "")
+
+    def validate_zs3_input(self, newval):
+        # Erlaubt erstmal alle Ziffern – volle Prüfung später im Kodieren!
+        return newval == "" or newval.isdigit()
 
     def validate_num_input(self, new_val):
         if new_val == "":
@@ -430,8 +458,10 @@ class EncodeDecodeGUI(tk.Tk):
             if element == "SILS":
                 param_inputdict = {}
                 for field, widgets in self.sils_entries.items():
-                    cb_val = widgets["combobox"].get()
-                    entry_val = widgets["entry"].get().strip() if widgets["entry"] else ""
+                    cb = widgets.get("combobox")
+                    entry = widgets.get("entry")
+                    cb_val = cb.get() if cb else ""
+                    entry_val = entry.get().strip() if entry else ""
                     if field in ["ZS2", "ZS2V"]:
                         if cb_val == "Kennbuchstabe" and entry_val:
                             param_inputdict[field] = f"Kennbuchstabe {entry_val.upper()}"
@@ -442,8 +472,18 @@ class EncodeDecodeGUI(tk.Tk):
                             param_inputdict[field] = f"Fahrweginformation {entry_val}"
                         else:
                             param_inputdict[field] = cb_val
+                    elif field in ["ZS3", "ZS3V"]:
+                        # Endgültige Gültigkeitsprüfung erst HIER:
+                        if entry_val and entry_val.isdigit():
+                            val10 = int(entry_val)
+                            if 10 <= val10 <= 150 and val10 % 10 == 0:
+                                param_inputdict[field] = entry_val
+                            else:
+                                param_inputdict[field] = "Aus"
+                        else:
+                            param_inputdict[field] = "Aus"
                     else:
-                        param_inputdict[field] = cb_val
+                        param_inputdict[field] = cb_val if cb_val else "Aus"
                 for field in ["ZS2", "ZS2V", "Fahrweginformation"]:
                     if field in param_inputdict and "Kennbuchstabe" in str(param_inputdict[field]):
                         char = str(param_inputdict[field])[-1]
