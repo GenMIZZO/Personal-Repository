@@ -64,7 +64,7 @@ class EncodeDecodeGUI(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title("Encode/Decode")
-        self.geometry("650x600")
+        self.geometry("750x600")
         self.resizable(False, False)
         self.sils_entries = {}
         self.telegrammwidgets = []
@@ -102,12 +102,12 @@ class EncodeDecodeGUI(tk.Tk):
         ToolTip(self.typ_dropdown, "Wähle Meldung (X-Telegramme) oder Kommando (W-Telegramme)")
 
         # ------------- Im Encode Tab ---------------------
-        ttk.Label(self.encode_tab, text="Hex-Form:").place(x=520, y=18)
+        ttk.Label(self.encode_tab, text="Hex-Form:").place(x=565, y=10)
         self.hex_format_var = tk.StringVar(value="NNH")
         self.hex_format_dropdown = ttk.Combobox(
             self.encode_tab, textvariable=self.hex_format_var,
-            values=["NNH", "0xNN"], state="readonly", width=7)
-        self.hex_format_dropdown.place(x=600, y=18)
+            values=["NNH", "0xNN"], state="readonly", width=8)
+        self.hex_format_dropdown.place(x=630, y=10)
         ToolTip(self.hex_format_dropdown, "Wähle das gewünschte Hex-Ausgabeformat (z.B. 01H oder 0x01)")
 
         vertical_shift += 36
@@ -195,7 +195,7 @@ class EncodeDecodeGUI(tk.Tk):
         self.encode_result_label = ttk.Label(self.encode_tab, text="Kodierungsergebnis")
         self.encode_result_label.place(x=250, y=430)
         self.encode_result = tk.Text(self.encode_tab, height=3)
-        self.encode_result.place(x=120, y=450, width=480, height=100)
+        self.encode_result.place(x=120, y=450, width=550, height=100)
         self.copy_result_button = ttk.Button(self.encode_tab, text="Ergebnis kopieren", command=self.copy_encode_result)
         self.copy_result_button.place(x=10, y=493)
         self.encode_button = ttk.Button(self.encode_tab, text="Encode", command=self.kodieren)
@@ -262,6 +262,8 @@ class EncodeDecodeGUI(tk.Tk):
         self.sils_extra = {"container": None, "canvas": None, "scrollbar": None, "scrollable_frame": None}
 
     def create_sils_ui(self):
+        LABEL_WIDTH = 20  # Das ist die Breite, die alle ComboBox-Labels haben!
+        COMBO_PADX = 10   # Das Padding der Combobox!
         self.destroy_sils_ui()
         container = ttk.Frame(self.encode_tab)
         container.place(x=15, y=120, width=960, height=300)
@@ -284,49 +286,48 @@ class EncodeDecodeGUI(tk.Tk):
         for idx, field in enumerate(sils_fields):
             frame = ttk.Frame(scrollable_frame)
             frame.grid(row=idx, column=0, sticky="w", pady=5, padx=10)
+
             if field in ["ZS3", "ZS3V"]:
-                lbl = ttk.Label(frame, text=f"{field}:", width=10, anchor="w")
+                lbl = ttk.Label(frame, text=f"{field}:", width=LABEL_WIDTH, anchor="w")
                 lbl.pack(side="left")
                 lbl_geschw = ttk.Label(frame, text="Geschwindigkeit")
-                lbl_geschw.pack(side="left", padx=(8,0))
+                lbl_geschw.pack(side="left", padx=(COMBO_PADX,0))  # <-- gleiche Startposition wie ComboBox!
                 entry = ttk.Entry(frame, width=5)
                 entry.pack(side="left", padx=(8,0))
-                entry.config(validate="key",
-                            validatecommand=(self.encode_tab.register(self.validate_zs3_input), "%P"))
                 lbl_kmh = ttk.Label(frame, text="Km/h")
                 lbl_kmh.pack(side="left", padx=(8,0))
                 cb = None
             elif field in ["ZS2", "ZS2V"]:
-                lbl = ttk.Label(frame, text=f"{field}:", width=20, anchor="w")
+                lbl = ttk.Label(frame, text=f"{field}:", width=LABEL_WIDTH, anchor="w")
                 lbl.pack(side="left")
                 cb = ttk.Combobox(frame, state="readonly", width=20)
+                cb.pack(side="left", padx=COMBO_PADX)
                 cb["values"] = ["Aus", "Kennbuchstabe"]
                 cb.set("Aus")
-                cb.pack(side="left", padx=10)
                 entry = ttk.Entry(frame, width=5)
                 entry.pack(side="left")
                 entry.configure(validatecommand=(entry.register(self.validate_char_input), "%P"))
                 entry.config(state="disabled")
                 cb.bind("<<ComboboxSelected>>", lambda e, entry=entry: self.toggle_sils_entry(entry, e.widget.get()))
             elif field == "Fahrweginformation":
-                lbl = ttk.Label(frame, text=f"{field}:", width=20, anchor="w")
+                lbl = ttk.Label(frame, text=f"{field}:", width=LABEL_WIDTH, anchor="w")
                 lbl.pack(side="left")
                 cb = ttk.Combobox(frame, state="readonly", width=20)
+                cb.pack(side="left", padx=COMBO_PADX)
                 cb["values"] = ["Keine Information", "Aus", "Fahrweginformation"]
                 cb.set("Keine Information")
-                cb.pack(side="left", padx=10)
                 entry = ttk.Entry(frame, width=5)
                 entry.pack(side="left")
                 entry.configure(validatecommand=(entry.register(self.validate_num_input), "%P"))
                 entry.config(state="disabled")
                 cb.bind("<<ComboboxSelected>>", lambda e, entry=entry: self.toggle_sils_entry(entry, e.widget.get()))
             else:
-                lbl = ttk.Label(frame, text=f"{field}:", width=20, anchor="w")
+                lbl = ttk.Label(frame, text=f"{field}:", width=LABEL_WIDTH, anchor="w")
                 lbl.pack(side="left")
                 cb = ttk.Combobox(frame, state="readonly", width=20)
+                cb.pack(side="left", padx=COMBO_PADX)
                 cb["values"] = list(alle_elemente["SILS"]["Meldung"]["telegramme"][field].keys())
                 cb.set(list(cb["values"])[0])
-                cb.pack(side="left", padx=10)
                 entry = None
             self.sils_entries[field] = {"combobox": cb, "entry": entry}
         self.sils_widgets.append(container)
@@ -592,13 +593,13 @@ class EncodeDecodeGUI(tk.Tk):
             values=list(alle_elemente.keys()), state="disabled", width=15
         )
         self.decode_element_dropdown.place(x=400, y=18)
-        self.input_text = tk.Text(self.decode_tab, width=110, height=3)
+        self.input_text = tk.Text(self.decode_tab, width=250, height=3)
         self.input_text.place(x=10, y=45, width=600, height=56)
         self.decode_button = ttk.Button(self.decode_tab, text="Dekodieren", command=self.do_decode)
         self.decode_button.place(x=10, y=110)
         ttk.Label(self.decode_tab, text="Dekodierungsergebnis:").place(x=10, y=150)
         self.result_text = tk.Text(self.decode_tab, width=90, height=5)
-        self.result_text.place(x=10, y=175, width=600, height=165)
+        self.result_text.place(x=10, y=175, width=650, height=165)
         self.copy_decode_result_button = ttk.Button(self.decode_tab, text="Ergebnis kopieren", command=self.copy_decode_result)
         self.copy_decode_result_button.place(x=10, y=345)
         self.update_decode_mode_widgets()
