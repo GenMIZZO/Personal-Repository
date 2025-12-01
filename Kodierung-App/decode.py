@@ -2,6 +2,18 @@ import os
 import json
 import re
 
+def parse_input_hex(hex_str):
+    # Erkenne 01H, 0x01, FFH, 0xFF etc.
+    hex_str = hex_str.strip()
+    if hex_str.lower().endswith('h'):
+        return int(hex_str[:-1], 16)
+    elif hex_str.lower().startswith('0x'):
+        return int(hex_str, 16)
+    elif re.match(r'^[0-9A-Fa-f]{2}$', hex_str):
+        return int(hex_str, 16)
+    else:
+        raise ValueError(f"Unbekanntes Hex-Format: {hex_str}")
+        
 def hex_str(dec):
     return f"{int(dec):02X}"
 

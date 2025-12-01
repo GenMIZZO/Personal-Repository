@@ -1,9 +1,17 @@
 import os
 import json
 import re
+from decode import parse_input_hex
 
-# Logging deaktiviert
-
+def format_hex_value(h, hex_format):
+    num = parse_input_hex(h)
+    if hex_format == 'NNH':
+        return f"{num:02X}H"
+    elif hex_format == '0xNN':
+        return f"0x{num:02X}"
+    else:
+        return str(h)
+    
 def parse_eingabe(eingabe, param_liste):
     teile = eingabe.strip().split()
     param_wert = {}
@@ -13,9 +21,10 @@ def parse_eingabe(eingabe, param_liste):
             parameter, wert = match.groups()
             if parameter not in param_liste:
                 continue
+            from decode import parse_input_hex
             try:
-                wert_dec = str(int(wert, 16))
-            except ValueError:
+                wert_dec = str(parse_input_hex(wert))
+            except Exception:
                 continue
             param_wert[parameter] = wert_dec
     return param_wert
@@ -37,7 +46,7 @@ with open(mapping_path, "r", encoding="utf-8") as f:
 def normalize_for_match(s):
     return re.sub(r"\s*([+])\s*", "+", s.strip().lower()).replace(" ", "")
     
-def encode_sils(param_inputdict):
+def encode_sils(param_inputdict, hex_format):
     sils_map = alle_elemente["SILS"]["Meldung"]["telegramme"]
     byteorder = alle_elemente["SILS"]["byteorder"]
     hex_bytes = []    
@@ -113,9 +122,9 @@ def encode_sils(param_inputdict):
             
         except Exception as e:
             raise
-    return hex_bytes
+    return [format_hex_value(h, hex_format) for h in hex_bytes]
 
-def encode_main(element, typ, pea_modus, param_inputdict, only_param=False, header_key="05"):
+def encode_main(element, typ, pea_modus, param_inputdict, only_param=False, header_key="05", hex_format="NNH"):
     try:        
         if element == "SILS":
             if typ != "Meldung":
@@ -125,7 +134,7 @@ def encode_main(element, typ, pea_modus, param_inputdict, only_param=False, head
                 if field not in allowed_fields:
                     raise ValueError(f"Ungültiges Feld: {field}")
             
-            return encode_sils(param_inputdict)
+            return encode_sils(param_inputdict, hex_format)
         
         if element not in alle_elemente:
             raise ValueError(f"Element '{element}' nicht im Mapping!")
@@ -141,7 +150,6 @@ def encode_main(element, typ, pea_modus, param_inputdict, only_param=False, head
                 raise ValueError("Header-Auswahl ungültig!")
             header_str = header_dict[header_key][0]
             header = header_str.split()
-            header = header.copy()
             if element == "PEA" and pea_modus in {"G", "R"}:
                 pea_idx = 14
                 if len(header) > pea_idx:
@@ -158,7 +166,7 @@ def encode_main(element, typ, pea_modus, param_inputdict, only_param=False, head
                     for key, val in param_inputdict[tgram_name].items():
                         if key in param_liste:
                             try:
-                                param_wert[key] = str(int(val, 16))
+                                param_wert[key] = str(parse_input_hex(val))
                             except Exception:
                                 pass
                 else:
@@ -168,12 +176,12 @@ def encode_main(element, typ, pea_modus, param_inputdict, only_param=False, head
             tgram_bytes = mapping_bytes(tgram_mapping, param_wert)
             gesamt_bytes.extend(tgram_bytes)
         
-        return gesamt_bytes
+        return [format_hex_value(h, hex_format) for h in gesamt_bytes] 
     
     except Exception as e:
         raise
 
-def encode_sils_full(param_inputdict, name_4char, is_stoerung=False, stoerung_art="05", sender_byte=None):
+def encode_sils_full(param_inputdict, name_4char, is_stoerung=False, stoerung_art="05", sender_byte=None, hex_format="NNH"):
     result = []
 
     # Sender
@@ -214,7 +222,7 @@ def encode_sils_full(param_inputdict, name_4char, is_stoerung=False, stoerung_ar
 
     # --- KORREKT NUTZDATEN-BYTES HINZUFÜGEN ---
     nutze_input = {f: param_inputdict.get(f, "Aus") for f in nutzdaten_fields}
-    nutzdaten_bytes = encode_sils(nutze_input)
+    nutzdaten_bytes = encode_sils(nutze_input, hex_format)   
     result.extend(nutzdaten_bytes)
 
     # DB-Teil nur bei NICHT-Störung
@@ -222,4 +230,4 @@ def encode_sils_full(param_inputdict, name_4char, is_stoerung=False, stoerung_ar
         db_bytes = alle_elemente["SILS"]["Meldung"]["header"]["DB"][0].split()
         result.extend(db_bytes)
 
-    return result
+    return [format_hex_value(h, hex_format) for h in result]

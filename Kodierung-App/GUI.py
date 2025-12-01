@@ -4,10 +4,11 @@ import tkinter.messagebox as mbox
 import json
 import os
 import re
+from decode import parse_input_hex
+from encode import encode_main, encode_sils_full
 import logging
 import traceback
 from datetime import datetime
-from encode import encode_main, encode_sils_full
 
 class DebugLogger:
     def __init__(self):
@@ -99,6 +100,15 @@ class EncodeDecodeGUI(tk.Tk):
         self.typ_dropdown.place(x=60, y=vertical_shift)
         self.typ_dropdown.bind("<<ComboboxSelected>>", self.show_telegramme_for_element)
         ToolTip(self.typ_dropdown, "Wähle Meldung (X-Telegramme) oder Kommando (W-Telegramme)")
+
+        # ------------- Im Encode Tab ---------------------
+        ttk.Label(self.encode_tab, text="Hex-Form:").place(x=520, y=18)
+        self.hex_format_var = tk.StringVar(value="NNH")
+        self.hex_format_dropdown = ttk.Combobox(
+            self.encode_tab, textvariable=self.hex_format_var,
+            values=["NNH", "0xNN"], state="readonly", width=7)
+        self.hex_format_dropdown.place(x=600, y=18)
+        ToolTip(self.hex_format_dropdown, "Wähle das gewünschte Hex-Ausgabeformat (z.B. 01H oder 0x01)")
 
         vertical_shift += 36
         ttk.Label(self.encode_tab, text="Element:").place(x=10, y=vertical_shift)
@@ -450,11 +460,13 @@ class EncodeDecodeGUI(tk.Tk):
             self.only_param_var.set(False)
 
     def kodieren(self):
+        hex_format = self.hex_format_var.get()
         try:
             element = self.element_var.get()
             typ = self.typ_var.get()
             pea_modus = self.pea_modus_var.get()
             param_inputdict = {}
+            hex_format = self.hex_format_var.get()
             if element == "SILS":
                 param_inputdict = {}
                 for field, widgets in self.sils_entries.items():
@@ -508,10 +520,11 @@ class EncodeDecodeGUI(tk.Tk):
                         name_input,
                         is_stoerung=is_stoerung,
                         stoerung_art=stoerung_art,
-                        sender_byte=ls_sender_byte  # schick das zur Funktion
+                        sender_byte=ls_sender_byte,
+                        hex_format=hex_format
                     )
                 else:
-                    bitleiste = encode_main(element, typ, pea_modus, param_inputdict)
+                    bitleiste = encode_main(element, typ, pea_modus, param_inputdict, hex_format=hex_format)
             else:
                 only_param = self.only_param_var.get() or typ == "Kommando"
                 tgrams = alle_elemente[element].get(typ, {}).get("telegramme", {})
@@ -528,7 +541,7 @@ class EncodeDecodeGUI(tk.Tk):
                                 field_dict[param] = v
                         if field_dict:
                             param_inputdict[tg_name] = field_dict
-                bitleiste = encode_main(element, typ, pea_modus, param_inputdict, only_param=only_param, header_key=header_key)
+                bitleiste = encode_main(element, typ, pea_modus, param_inputdict, only_param=only_param, header_key=header_key, hex_format=hex_format)
             text_result = " ".join(bitleiste)
             if self.io_prefix_var.get() and element != "SILS":
                 text_result = "$IO: " + text_result
@@ -590,6 +603,14 @@ class EncodeDecodeGUI(tk.Tk):
         self.copy_decode_result_button.place(x=10, y=345)
         self.update_decode_mode_widgets()
 
+        ttk.Label(self.decode_tab, text="Hex-Form:").place(x=540, y=15)
+        self.decode_hex_format_var = tk.StringVar(value="NNH")
+        self.decode_hex_format_dropdown = ttk.Combobox(
+            self.decode_tab, textvariable=self.decode_hex_format_var,
+            values=["NNH", "0xNN"], state="readonly", width=7)
+        self.decode_hex_format_dropdown.place(x=600, y=15)
+        ToolTip(self.decode_hex_format_dropdown, "Wähle das Format der eingegebenen Hex-Zeichen")
+
     def update_decode_mode_widgets(self):
         mode = self.decode_header_ticker_var.get()
         if mode:
@@ -601,8 +622,18 @@ class EncodeDecodeGUI(tk.Tk):
 
     def do_decode(self):
         try:
+            input_format = self.decode_hex_format_var.get()
             bitleiste_str = self.input_text.get(1.0, tk.END).replace('\n', ' ').strip()
-            bitleiste_liste = bitleiste_str.split() if bitleiste_str else []
+            bitleiste_raw = bitleiste_str.split() if bitleiste_str else []
+
+            # Wandelt beliebige Hex-Formate in "NNH" um:
+            bitleiste_liste = []
+            for b in bitleiste_raw:
+                try:
+                    val = parse_input_hex(b)
+                    bitleiste_liste.append(f"{val:02X}H")
+                except Exception:
+                    bitleiste_liste.append(b.upper())
             mode = self.decode_header_ticker_var.get()
             if not mode:
                 typ = self.decode_typ_var.get()
