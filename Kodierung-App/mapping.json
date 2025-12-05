@@ -532,7 +532,7 @@
                 "5FH 50H 30H 54H 42H 37H 53H 44H 5AH 45H 5FH 30H 37H 23H 23H 30H 30H 30H 33H 34H 32H"
             ],
             "DB":[
-                "00H 00H 00H 0EH 3EH 00H 00H 00H 00H"
+                "0xFE 0xF5 0xFE 0xFE 0xFE 0xFE 0xFE 0xFE 0xFE"
             ]
         },
         "telegramme": {
